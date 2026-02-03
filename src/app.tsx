@@ -70,7 +70,6 @@ export function App() {
   const ballSlotIndex = cupSlots[ballCupId]
 
   const isReady = phase === 'ready'
-  const isReveal = phase === 'revealing' || phase === 'result'
   const playerWon = chosenCupId !== null && chosenCupId === ballCupId
 
   const clearTimers = () => {
