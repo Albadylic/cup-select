@@ -1,0 +1,214 @@
+:root {
+  --wood-dark: #3c1f12;
+  --wood-mid: #5b2e1a;
+  --wood-light: #8b4a2a;
+  --brass: #d7a058;
+  --stone-dark: #352a24;
+  --stone-mid: #4a3b33;
+  --stone-light: #6a5447;
+  --lamp: #f7c57a;
+  --lamp-glow: rgba(247, 197, 122, 0.45);
+  --text-cream: #f7eed2;
+  --text-muted: rgba(247, 238, 210, 0.7);
+}
+
+.scene {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 36px 16px 48px;
+  color: var(--text-cream);
+  background: radial-gradient(circle at top, rgba(64, 45, 32, 0.7), transparent 50%),
+    linear-gradient(180deg, #1a1410 0%, #2a1f19 45%, #251a14 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.scene::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 20%, var(--lamp-glow), transparent 50%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.02) 0,
+      rgba(255, 255, 255, 0.02) 22px,
+      rgba(0, 0, 0, 0.12) 22px,
+      rgba(0, 0, 0, 0.12) 24px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.18) 0,
+      rgba(0, 0, 0, 0.18) 26px,
+      rgba(255, 255, 255, 0.03) 26px,
+      rgba(255, 255, 255, 0.03) 28px
+    );
+  opacity: 0.7;
+  pointer-events: none;
+  animation: lanternGlow 6s ease-in-out infinite;
+}
+
+@keyframes lanternGlow {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.scene__header,
+.scene__footer {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+
+.scene__eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.scene__title {
+  font-family: 'Pixelify Sans', sans-serif;
+  font-size: clamp(2.4rem, 4vw, 3.6rem);
+  margin: 8px 0 4px;
+}
+
+.scene__subtitle {
+  margin: 0;
+  font-family: 'IM Fell English', serif;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.table {
+  position: relative;
+  width: min(680px, 92vw);
+  height: 360px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 2;
+}
+
+.table__surface {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 120px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-mid) 60%, var(--wood-dark) 100%);
+  box-shadow: inset 0 16px 0 rgba(255, 255, 255, 0.08), inset 0 -12px 0 rgba(0, 0, 0, 0.35);
+}
+
+.table__surface::before {
+  content: '';
+  position: absolute;
+  inset: 16px 28px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.25));
+}
+
+.table__slots {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.cup {
+  position: absolute;
+  bottom: 40px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: default;
+  --cup-x: 0px;
+  transform: translateX(var(--cup-x));
+  transition: transform 450ms ease;
+}
+
+.cup--ready {
+  cursor: pointer;
+}
+
+.cup--ready:hover {
+  transform: translateX(var(--cup-x)) translateY(-6px);
+}
+
+.cup--lifted {
+  transform: translateX(var(--cup-x)) translateY(-90px) !important;
+}
+
+.cup-svg {
+  width: 140px;
+  height: 140px;
+  filter: drop-shadow(0 10px 0 rgba(0, 0, 0, 0.35));
+}
+
+.ball {
+  position: absolute;
+  bottom: 58px;
+  width: 40px;
+  height: 40px;
+  opacity: 0;
+  transition: opacity 300ms ease, transform 450ms ease;
+}
+
+.ball--visible {
+  opacity: 1;
+}
+
+.ball-svg {
+  filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.35));
+}
+
+.scene__footer {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scene__hint {
+  font-family: 'IM Fell English', serif;
+  color: var(--text-muted);
+}
+
+.play-again {
+  font-family: 'Pixelify Sans', sans-serif;
+  font-size: 1.1rem;
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: 2px solid #c08140;
+  background: linear-gradient(180deg, #f3c47f, #ce8c3e);
+  color: #2b170d;
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.4), 0 8px 0 rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+
+.play-again:active {
+  transform: translateY(2px);
+}
+
+@media (max-width: 640px) {
+  .table {
+    height: 300px;
+  }
+  .cup-svg {
+    width: 120px;
+    height: 120px;
+  }
+  .cup {
+    bottom: 36px;
+  }
+}
