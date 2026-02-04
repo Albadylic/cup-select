@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import './app.css'
 
 type Phase = 'idle' | 'placing' | 'shuffling' | 'ready' | 'revealing' | 'result'
+type RoundResult = 'win' | 'lose' | null
 
 const SLOT_X = [-160, 0, 160]
-const SHUFFLE_MIN = 3
-const SHUFFLE_MAX = 9
 const REVEAL_DELAY_MS = 520
+const STAKE_STEP = 5
+const HIGH_SCORE_KEY = 'cupSelectHighScore'
 
 const randomInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1)) + min
@@ -64,6 +65,12 @@ export function App() {
   const [shuffleCount, setShuffleCount] = useState(0)
   const [liftOthers, setLiftOthers] = useState(false)
   const [ballX, setBallX] = useState(0)
+  const [coins, setCoins] = useState(0)
+  const [stake, setStake] = useState(0)
+  const [round, setRound] = useState(1)
+  const [highScore, setHighScore] = useState(0)
+  const [lastResult, setLastResult] = useState<RoundResult>(null)
+  const [bankedMessage, setBankedMessage] = useState('')
 
   const timeouts = useRef<number[]>([])
 
@@ -71,6 +78,9 @@ export function App() {
 
   const isReady = phase === 'ready'
   const playerWon = chosenCupId !== null && chosenCupId === ballCupId
+  const canStake = lastResult === 'win' && coins >= STAKE_STEP
+  const showActionButton = phase === 'idle' || phase === 'result'
+  const showBank = lastResult === 'win' && phase === 'result'
 
   const clearTimers = () => {
     timeouts.current.forEach((id) => window.clearTimeout(id))
@@ -84,9 +94,11 @@ export function App() {
 
   const startRound = () => {
     clearTimers()
+    setBankedMessage('')
     setLiftOthers(false)
     setChosenCupId(null)
     setCupSlots([0, 1, 2])
+    setLastResult(null)
     const nextBall = randomInt(0, 2)
     setBallCupId(nextBall)
     setBallX(0)
@@ -100,12 +112,16 @@ export function App() {
   }
 
   useEffect(() => {
+    const savedScore = Number(window.localStorage.getItem(HIGH_SCORE_KEY) || 0)
+    if (!Number.isNaN(savedScore)) setHighScore(savedScore)
     return () => clearTimers()
   }, [])
 
   useEffect(() => {
     if (phase !== 'shuffling') return
-    const count = randomInt(SHUFFLE_MIN, SHUFFLE_MAX)
+    const minShuffles = round <= 2 ? 3 : 4
+    const maxShuffles = Math.min(12, 4 + round)
+    const count = randomInt(minShuffles, maxShuffles)
     setShuffleCount(count)
     const steps = buildShuffleSteps(count)
     let stepIndex = 0
@@ -140,10 +156,59 @@ export function App() {
     queueTimeout(() => setPhase('result'), REVEAL_DELAY_MS + 520)
   }, [phase])
 
+  useEffect(() => {
+    if (phase !== 'result' || chosenCupId === null) return
+    if (playerWon) {
+      setCoins((prev) => {
+        const payout = prev === 0 || stake === 0 ? STAKE_STEP : stake
+        return prev + payout
+      })
+      setLastResult('win')
+    } else {
+      setCoins(0)
+      setStake(0)
+      setLastResult('lose')
+    }
+  }, [phase, chosenCupId, playerWon, stake])
+
   const handlePick = (cupId: number) => {
     if (!isReady) return
     setChosenCupId(cupId)
     setPhase('revealing')
+  }
+
+  const handleBank = () => {
+    if (!showBank) return
+    if (coins > highScore) {
+      window.localStorage.setItem(HIGH_SCORE_KEY, String(coins))
+      setHighScore(coins)
+      setBankedMessage('Banked!')
+      queueTimeout(() => setBankedMessage(''), 1400)
+    } else {
+      setBankedMessage('No new high score')
+      queueTimeout(() => setBankedMessage(''), 1400)
+    }
+  }
+
+  const adjustStake = (delta: number) => {
+    if (!canStake) return
+    setStake((prev) => {
+      const next = Math.max(0, Math.min(coins, prev + delta))
+      return Math.floor(next / STAKE_STEP) * STAKE_STEP
+    })
+  }
+
+  const maxStake = () => {
+    if (!canStake) return
+    setStake(Math.floor(coins / STAKE_STEP) * STAKE_STEP)
+  }
+
+  const handleNextRound = () => {
+    if (phase !== 'idle' && phase !== 'result') return
+    if (phase === 'result') {
+      setRound((prev) => prev + 1)
+    }
+    startRound()
   }
 
   const ballVisible =
@@ -164,6 +229,24 @@ export function App() {
         <p class="scene__eyebrow">Tavern Trick</p>
         <h1 class="scene__title">Cup &amp; Coin</h1>
         <p class="scene__subtitle">{sceneSubtitle}</p>
+        <div class="hud">
+          <div class="hud__item">
+            <span class="hud__label">Coins</span>
+            <span class="hud__value">{coins}</span>
+          </div>
+          <div class="hud__item">
+            <span class="hud__label">Stake</span>
+            <span class="hud__value">{stake}</span>
+          </div>
+          <div class="hud__item">
+            <span class="hud__label">High</span>
+            <span class="hud__value">{highScore}</span>
+          </div>
+          <div class="hud__item">
+            <span class="hud__label">Round</span>
+            <span class="hud__value">{round}</span>
+          </div>
+        </div>
       </header>
 
       <div class="table">
@@ -199,10 +282,42 @@ export function App() {
       </div>
 
       <footer class="scene__footer">
-        {phase === 'idle' || phase === 'result' ? (
-          <button class="play-again" onClick={startRound}>
-            {phase === 'idle' ? 'Begin' : 'Play again'}
-          </button>
+        {showActionButton ? (
+          <div class="action-row">
+            <button class="play-again" onClick={handleNextRound}>
+              {phase === 'idle' ? 'Begin' : 'Play again'}
+            </button>
+            {showBank ? (
+              <button class="bank-button" onClick={handleBank}>
+                Bank
+              </button>
+            ) : null}
+            {bankedMessage ? (
+              <div class="banked-confirm" role="status">
+                {bankedMessage}
+              </div>
+            ) : null}
+            {showBank && canStake ? (
+              <div class="stake-controls">
+                <button
+                  class="stake-button"
+                  onClick={() => adjustStake(-STAKE_STEP)}
+                >
+                  -{STAKE_STEP}
+                </button>
+                <div class="stake-value">{stake}</div>
+                <button
+                  class="stake-button"
+                  onClick={() => adjustStake(STAKE_STEP)}
+                >
+                  +{STAKE_STEP}
+                </button>
+                <button class="stake-button" onClick={maxStake}>
+                  Max
+                </button>
+              </div>
+            ) : null}
+          </div>
         ) : (
           <div class="scene__hint">
             {isReady ? 'Tap a cup to lift it.' : 'Keep your eye on the cups.'}
