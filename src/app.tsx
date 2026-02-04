@@ -67,9 +67,10 @@ export function App() {
   const [walletState, setWalletState] = useState({ wallet: 5, stake: 5 })
   const [round, setRound] = useState(1)
   const [highScore, setHighScore] = useState(0)
-  const [bankedMessage, setBankedMessage] = useState('')
   const [showIntro, setShowIntro] = useState(true)
   const [roundResolved, setRoundResolved] = useState(false)
+  const [showHighScoreToast, setShowHighScoreToast] = useState(false)
+  const [toastKey, setToastKey] = useState(0)
 
   const timeouts = useRef<number[]>([])
 
@@ -79,7 +80,6 @@ export function App() {
   const isReady = phase === 'ready'
   const playerWon = chosenCupId !== null && chosenCupId === ballCupId
   const showActionButton = phase === 'idle' || phase === 'result'
-  const showBank = showActionButton
   const canIncreaseStake = wallet >= STAKE_STEP
   const canDecreaseStake = stake > STAKE_STEP
   const totalCoins = wallet + stake
@@ -98,11 +98,11 @@ export function App() {
 
   const startRound = () => {
     clearTimers()
-    setBankedMessage('')
     setLiftOthers(false)
     setChosenCupId(null)
     setCupSlots([0, 1, 2])
     setRoundResolved(false)
+    setShowHighScoreToast(false)
     const nextBall = randomInt(0, 2)
     setBallCupId(nextBall)
     setBallX(SLOT_X[nextBall])
@@ -162,16 +162,19 @@ export function App() {
     if (roundResolved) return
     setRoundResolved(true)
     if (playerWon) {
-      setWalletState((prev) => ({
-        wallet: prev.wallet + prev.stake * 2,
+      const newWallet = wallet + stake * 2
+      if (newWallet > highScore) {
+        window.localStorage.setItem(HIGH_SCORE_KEY, String(newWallet))
+        setHighScore(newWallet)
+        setShowHighScoreToast(true)
+        setToastKey((prev) => prev + 1)
+        queueTimeout(() => setShowHighScoreToast(false), 1500)
+      }
+      setWalletState(() => ({
+        wallet: newWallet,
         stake: 0,
       }))
     } else {
-      const preBustTotal = wallet + stake
-      if (preBustTotal > highScore) {
-        window.localStorage.setItem(HIGH_SCORE_KEY, String(preBustTotal))
-        setHighScore(preBustTotal)
-      }
       setWalletState((prev) => ({
         wallet: prev.wallet,
         stake: 0,
@@ -183,20 +186,6 @@ export function App() {
     if (!isReady) return
     setChosenCupId(cupId)
     setPhase('revealing')
-  }
-
-  const handleBank = () => {
-    if (!showBank) return
-    const total = wallet + stake
-    if (total > highScore) {
-      window.localStorage.setItem(HIGH_SCORE_KEY, String(total))
-      setHighScore(total)
-      setBankedMessage('Banked!')
-      queueTimeout(() => setBankedMessage(''), 1400)
-    } else {
-      setBankedMessage('No new high score')
-      queueTimeout(() => setBankedMessage(''), 1400)
-    }
   }
 
   const increaseStake = () => {
@@ -240,6 +229,7 @@ export function App() {
     setLiftOthers(false)
     setPhase('idle')
     setRoundResolved(false)
+    setShowHighScoreToast(false)
   }
 
   const ballVisible =
@@ -268,7 +258,7 @@ export function App() {
               <li>Stake at least 5 coins before each round.</li>
               <li>Watch the shuffle, then pick a cup.</li>
               <li>Win to earn double your stake. Lose and you forfeit it.</li>
-              <li>Bank to save a high score before betting again.</li>
+              <li>Earn a new high score when your wallet grows.</li>
             </ul>
             <button class="play-again" onClick={() => setShowIntro(false)}>
               Start
@@ -300,9 +290,36 @@ export function App() {
         </div>
       </header>
 
-      <div class="table">
-        <div class="table__surface" />
-        <div class="table__slots">
+      <div class="table-zone">
+        {showHighScoreToast ? (
+          <div key={toastKey} class="highscore-toast" role="status">
+            <div class="toast-icon" aria-hidden="true">
+              <svg viewBox="0 0 140 60" width="120" height="52">
+                <g>
+                  <rect x="8" y="18" width="40" height="28" rx="6" fill="#c68135" />
+                  <rect x="14" y="12" width="28" height="10" rx="4" fill="#f2d08b" />
+                  <rect x="14" y="8" width="28" height="6" rx="3" fill="#f7f0d6" />
+                  <circle cx="50" cy="30" r="8" fill="#c68135" />
+                  <circle cx="50" cy="30" r="4" fill="#7b4d2a" />
+                </g>
+                <g>
+                  <rect x="86" y="18" width="40" height="28" rx="6" fill="#c68135" />
+                  <rect x="92" y="12" width="28" height="10" rx="4" fill="#f2d08b" />
+                  <rect x="92" y="8" width="28" height="6" rx="3" fill="#f7f0d6" />
+                  <circle cx="84" cy="30" r="8" fill="#c68135" />
+                  <circle cx="84" cy="30" r="4" fill="#7b4d2a" />
+                </g>
+                <circle cx="70" cy="6" r="4" fill="#f7f0d6" opacity="0.9" />
+                <circle cx="78" cy="4" r="3" fill="#f7f0d6" opacity="0.7" />
+                <circle cx="62" cy="4" r="3" fill="#f7f0d6" opacity="0.7" />
+              </svg>
+            </div>
+            <div class="toast-text">New high score!</div>
+          </div>
+        ) : null}
+        <div class="table">
+          <div class="table__surface" />
+          <div class="table__slots">
           {cupSlots.map((slotIndex, cupId) => {
             const lifted =
               (phase === 'revealing' && chosenCupId === cupId) ||
@@ -329,6 +346,7 @@ export function App() {
           >
             <BallSvg />
           </div>
+          </div>
         </div>
       </div>
 
@@ -342,16 +360,6 @@ export function App() {
             >
               {phase === 'idle' ? 'Begin' : 'Play again'}
             </button>
-            {showBank ? (
-              <button class="bank-button" onClick={handleBank}>
-                Bank
-              </button>
-            ) : null}
-            {bankedMessage ? (
-              <div class="banked-confirm" role="status">
-                {bankedMessage}
-              </div>
-            ) : null}
             {!gameOver ? (
               <div class="stake-controls">
                 <button
