@@ -203,6 +203,22 @@
   filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.35));
 }
 
+.ball--visible .ball-svg {
+  animation: ballPop 900ms ease;
+}
+
+@keyframes ballPop {
+  0% {
+    transform: scale(0.92);
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .scene__footer {
   min-height: 72px;
   display: flex;

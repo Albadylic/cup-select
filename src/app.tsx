@@ -4,6 +4,7 @@ import './app.css'
 type Phase = 'idle' | 'placing' | 'shuffling' | 'ready' | 'revealing' | 'result'
 const SLOT_X = [-160, 0, 160]
 const REVEAL_DELAY_MS = 520
+const PLACEMENT_PAUSE_MS = 1400
 const STAKE_STEP = 5
 const HIGH_SCORE_KEY = 'cupSelectHighScore'
 
@@ -104,14 +105,11 @@ export function App() {
     setRoundResolved(false)
     const nextBall = randomInt(0, 2)
     setBallCupId(nextBall)
-    setBallX(0)
+    setBallX(SLOT_X[nextBall])
     setPhase('placing')
     queueTimeout(() => {
-      setBallX(SLOT_X[nextBall])
-    }, 320)
-    queueTimeout(() => {
       setPhase('shuffling')
-    }, 900)
+    }, PLACEMENT_PAUSE_MS)
   }
 
   useEffect(() => {
