@@ -85,6 +85,8 @@ export function App() {
   const totalCoins = wallet + stake
   const hasRequiredStake = stake >= STAKE_STEP
   const gameOver = totalCoins < STAKE_STEP
+  const speedLevel = Math.floor((round - 1) / 3)
+  const shuffleDuration = Math.max(400, 520 - speedLevel * 30)
 
   const clearTimers = () => {
     timeouts.current.forEach((id) => window.clearTimeout(id))
@@ -141,10 +143,10 @@ export function App() {
         return next
       })
       stepIndex += 1
-      queueTimeout(runStep, 520)
+      queueTimeout(runStep, shuffleDuration)
     }
-    queueTimeout(runStep, 220)
-  }, [phase])
+    queueTimeout(runStep, Math.max(160, Math.floor(shuffleDuration * 0.4)))
+  }, [phase, shuffleDuration])
 
   useEffect(() => {
     if (phase === 'placing') return
@@ -290,7 +292,10 @@ export function App() {
         </div>
       </header>
 
-      <div class="table-zone">
+      <div
+        class="table-zone"
+        style={{ '--shuffle-ms': `${shuffleDuration}ms` } as Record<string, string>}
+      >
         {showHighScoreToast ? (
           <div key={toastKey} class="highscore-toast" role="status">
             <div class="toast-icon" aria-hidden="true">

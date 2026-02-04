@@ -137,6 +137,7 @@
   align-items: flex-end;
   justify-content: center;
   z-index: 2;
+  --shuffle-ms: 520ms;
 }
 
 .highscore-toast {
@@ -224,7 +225,7 @@
   cursor: default;
   --cup-x: 0px;
   transform: translateX(var(--cup-x));
-  transition: transform 450ms ease;
+  transition: transform var(--shuffle-ms) ease;
 }
 
 .cup--ready {
@@ -251,7 +252,7 @@
   width: 40px;
   height: 40px;
   opacity: 0;
-  transition: opacity 300ms ease, transform 450ms ease;
+  transition: opacity 300ms ease, transform var(--shuffle-ms) ease;
 }
 
 .ball--visible {
