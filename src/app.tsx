@@ -2,8 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import './app.css'
 
 type Phase = 'idle' | 'placing' | 'shuffling' | 'ready' | 'revealing' | 'result'
-type RoundResult = 'win' | 'lose' | null
-
 const SLOT_X = [-160, 0, 160]
 const REVEAL_DELAY_MS = 520
 const STAKE_STEP = 5
@@ -65,22 +63,27 @@ export function App() {
   const [shuffleCount, setShuffleCount] = useState(0)
   const [liftOthers, setLiftOthers] = useState(false)
   const [ballX, setBallX] = useState(0)
-  const [coins, setCoins] = useState(0)
-  const [stake, setStake] = useState(0)
+  const [walletState, setWalletState] = useState({ wallet: 5, stake: 5 })
   const [round, setRound] = useState(1)
   const [highScore, setHighScore] = useState(0)
-  const [lastResult, setLastResult] = useState<RoundResult>(null)
   const [bankedMessage, setBankedMessage] = useState('')
+  const [showIntro, setShowIntro] = useState(true)
+  const [roundResolved, setRoundResolved] = useState(false)
 
   const timeouts = useRef<number[]>([])
 
   const ballSlotIndex = cupSlots[ballCupId]
 
+  const { wallet, stake } = walletState
   const isReady = phase === 'ready'
   const playerWon = chosenCupId !== null && chosenCupId === ballCupId
-  const canStake = lastResult === 'win' && coins >= STAKE_STEP
   const showActionButton = phase === 'idle' || phase === 'result'
-  const showBank = lastResult === 'win' && phase === 'result'
+  const showBank = showActionButton
+  const canIncreaseStake = wallet >= STAKE_STEP
+  const canDecreaseStake = stake > STAKE_STEP
+  const totalCoins = wallet + stake
+  const hasRequiredStake = stake >= STAKE_STEP
+  const gameOver = totalCoins < STAKE_STEP
 
   const clearTimers = () => {
     timeouts.current.forEach((id) => window.clearTimeout(id))
@@ -98,7 +101,7 @@ export function App() {
     setLiftOthers(false)
     setChosenCupId(null)
     setCupSlots([0, 1, 2])
-    setLastResult(null)
+    setRoundResolved(false)
     const nextBall = randomInt(0, 2)
     setBallCupId(nextBall)
     setBallX(0)
@@ -158,18 +161,25 @@ export function App() {
 
   useEffect(() => {
     if (phase !== 'result' || chosenCupId === null) return
+    if (roundResolved) return
+    setRoundResolved(true)
     if (playerWon) {
-      setCoins((prev) => {
-        const payout = prev === 0 || stake === 0 ? STAKE_STEP : stake
-        return prev + payout
-      })
-      setLastResult('win')
+      setWalletState((prev) => ({
+        wallet: prev.wallet + prev.stake * 2,
+        stake: 0,
+      }))
     } else {
-      setCoins(0)
-      setStake(0)
-      setLastResult('lose')
+      const preBustTotal = wallet + stake
+      if (preBustTotal > highScore) {
+        window.localStorage.setItem(HIGH_SCORE_KEY, String(preBustTotal))
+        setHighScore(preBustTotal)
+      }
+      setWalletState((prev) => ({
+        wallet: prev.wallet,
+        stake: 0,
+      }))
     }
-  }, [phase, chosenCupId, playerWon, stake])
+  }, [phase, chosenCupId, playerWon, highScore, roundResolved, wallet, stake])
 
   const handlePick = (cupId: number) => {
     if (!isReady) return
@@ -179,9 +189,10 @@ export function App() {
 
   const handleBank = () => {
     if (!showBank) return
-    if (coins > highScore) {
-      window.localStorage.setItem(HIGH_SCORE_KEY, String(coins))
-      setHighScore(coins)
+    const total = wallet + stake
+    if (total > highScore) {
+      window.localStorage.setItem(HIGH_SCORE_KEY, String(total))
+      setHighScore(total)
       setBankedMessage('Banked!')
       queueTimeout(() => setBankedMessage(''), 1400)
     } else {
@@ -190,25 +201,47 @@ export function App() {
     }
   }
 
-  const adjustStake = (delta: number) => {
-    if (!canStake) return
-    setStake((prev) => {
-      const next = Math.max(0, Math.min(coins, prev + delta))
-      return Math.floor(next / STAKE_STEP) * STAKE_STEP
-    })
+  const increaseStake = () => {
+    if (!canIncreaseStake) return
+    setWalletState((prev) => ({
+      wallet: prev.wallet - STAKE_STEP,
+      stake: prev.stake + STAKE_STEP,
+    }))
+  }
+
+  const decreaseStake = () => {
+    if (!canDecreaseStake) return
+    setWalletState((prev) => ({
+      wallet: prev.wallet + STAKE_STEP,
+      stake: prev.stake - STAKE_STEP,
+    }))
   }
 
   const maxStake = () => {
-    if (!canStake) return
-    setStake(Math.floor(coins / STAKE_STEP) * STAKE_STEP)
+    if (wallet === 0) return
+    setWalletState((prev) => ({
+      wallet: 0,
+      stake: prev.stake + prev.wallet,
+    }))
   }
 
   const handleNextRound = () => {
     if (phase !== 'idle' && phase !== 'result') return
+    if (!hasRequiredStake) return
     if (phase === 'result') {
       setRound((prev) => prev + 1)
     }
     startRound()
+  }
+
+  const resetGame = () => {
+    clearTimers()
+    setWalletState({ wallet: 5, stake: 5 })
+    setRound(1)
+    setChosenCupId(null)
+    setLiftOthers(false)
+    setPhase('idle')
+    setRoundResolved(false)
   }
 
   const ballVisible =
@@ -219,20 +252,40 @@ export function App() {
     if (phase === 'placing') return 'The barkeep hides the ball...'
     if (phase === 'shuffling') return `Shuffling... (${shuffleCount})`
     if (phase === 'ready') return 'Pick a cup.'
-    if (phase === 'result') return playerWon ? 'You found it!' : 'Wrong cup.'
+    if (phase === 'result') {
+      if (playerWon) return 'You found it!'
+      return gameOver ? 'You are out of coins.' : 'Wrong cup.'
+    }
     return 'Get ready.'
-  }, [phase, shuffleCount, playerWon])
+  }, [phase, shuffleCount, playerWon, gameOver])
 
   return (
     <div class="scene">
+      {showIntro ? (
+        <div class="intro">
+          <div class="intro__card">
+            <p class="intro__eyebrow">How to Play</p>
+            <h2 class="intro__title">Cup &amp; Coin</h2>
+            <ul class="intro__list">
+              <li>Stake at least 5 coins before each round.</li>
+              <li>Watch the shuffle, then pick a cup.</li>
+              <li>Win to earn double your stake. Lose and you forfeit it.</li>
+              <li>Bank to save a high score before betting again.</li>
+            </ul>
+            <button class="play-again" onClick={() => setShowIntro(false)}>
+              Start
+            </button>
+          </div>
+        </div>
+      ) : null}
       <header class="scene__header">
         <p class="scene__eyebrow">Tavern Trick</p>
         <h1 class="scene__title">Cup &amp; Coin</h1>
         <p class="scene__subtitle">{sceneSubtitle}</p>
         <div class="hud">
           <div class="hud__item">
-            <span class="hud__label">Coins</span>
-            <span class="hud__value">{coins}</span>
+            <span class="hud__label">Wallet</span>
+            <span class="hud__value">{wallet}</span>
           </div>
           <div class="hud__item">
             <span class="hud__label">Stake</span>
@@ -284,7 +337,11 @@ export function App() {
       <footer class="scene__footer">
         {showActionButton ? (
           <div class="action-row">
-            <button class="play-again" onClick={handleNextRound}>
+            <button
+              class="play-again"
+              onClick={handleNextRound}
+              disabled={!hasRequiredStake || gameOver}
+            >
               {phase === 'idle' ? 'Begin' : 'Play again'}
             </button>
             {showBank ? (
@@ -297,18 +354,20 @@ export function App() {
                 {bankedMessage}
               </div>
             ) : null}
-            {showBank && canStake ? (
+            {!gameOver ? (
               <div class="stake-controls">
                 <button
                   class="stake-button"
-                  onClick={() => adjustStake(-STAKE_STEP)}
+                  onClick={decreaseStake}
+                  disabled={!canDecreaseStake}
                 >
                   -{STAKE_STEP}
                 </button>
                 <div class="stake-value">{stake}</div>
                 <button
                   class="stake-button"
-                  onClick={() => adjustStake(STAKE_STEP)}
+                  onClick={increaseStake}
+                  disabled={!canIncreaseStake}
                 >
                   +{STAKE_STEP}
                 </button>
@@ -316,6 +375,11 @@ export function App() {
                   Max
                 </button>
               </div>
+            ) : null}
+            {gameOver ? (
+              <button class="bank-button" onClick={resetGame}>
+                Reset
+              </button>
             ) : null}
           </div>
         ) : (

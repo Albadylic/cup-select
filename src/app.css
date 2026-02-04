@@ -73,6 +73,7 @@
   letter-spacing: 0.2em;
   font-size: 0.72rem;
   color: var(--text-muted);
+  font-family: 'IM Fell English', serif;
 }
 
 .scene__title {
@@ -93,7 +94,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(60px, 1fr));
   gap: 10px;
-  font-family: 'Pixelify Sans', sans-serif;
+  font-family: 'IM Fell English', serif;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-size: 0.72rem;
@@ -223,7 +224,7 @@
 }
 
 .play-again {
-  font-family: 'Pixelify Sans', sans-serif;
+  font-family: 'IM Fell English', serif;
   font-size: 1.1rem;
   padding: 10px 22px;
   border-radius: 10px;
@@ -234,8 +235,14 @@
   cursor: pointer;
 }
 
+.play-again:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .bank-button {
-  font-family: 'Pixelify Sans', sans-serif;
+  font-family: 'IM Fell English', serif;
   font-size: 1rem;
   padding: 10px 18px;
   border-radius: 10px;
@@ -257,7 +264,7 @@
 }
 
 .stake-button {
-  font-family: 'Pixelify Sans', sans-serif;
+  font-family: 'IM Fell English', serif;
   font-size: 0.9rem;
   padding: 6px 10px;
   border-radius: 8px;
@@ -267,22 +274,70 @@
   cursor: pointer;
 }
 
+.stake-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .stake-value {
   min-width: 36px;
   text-align: center;
-  font-family: 'Pixelify Sans', sans-serif;
+  font-family: 'IM Fell English', serif;
   font-size: 1rem;
   color: var(--text-cream);
 }
 
 .banked-confirm {
-  font-family: 'Pixelify Sans', sans-serif;
+  font-family: 'IM Fell English', serif;
   font-size: 0.9rem;
   padding: 8px 12px;
   border-radius: 8px;
   background: rgba(26, 20, 16, 0.7);
   border: 1px solid rgba(214, 160, 88, 0.5);
   color: var(--text-cream);
+}
+
+.intro {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 10, 8, 0.78);
+  backdrop-filter: blur(2px);
+}
+
+.intro__card {
+  max-width: 520px;
+  background: rgba(38, 26, 20, 0.95);
+  border: 1px solid rgba(214, 160, 88, 0.45);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: left;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.intro__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  margin: 0 0 8px;
+  color: var(--text-muted);
+}
+
+.intro__title {
+  font-family: 'Pixelify Sans', sans-serif;
+  font-size: 2rem;
+  margin: 0 0 12px;
+}
+
+.intro__list {
+  margin: 0 0 20px;
+  padding-left: 18px;
+  color: var(--text-cream);
+  font-family: 'IM Fell English', serif;
 }
 
 .play-again:active {
